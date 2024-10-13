@@ -13,7 +13,20 @@ from ptrace.ctypes_tools import formatAddress
 from ptrace.tools import signal_to_exitcode
 import sys
 import re
+import time
+import importlib.util
+import os.path
 
+# from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+def instantiate_class(mod, cname):
+    c = getattr(mod, cname)
+    return c()
 
 class SyscallTracer(Application):
 
@@ -74,10 +87,20 @@ class SyscallTracer(Application):
         parser.add_option("-i", "--show-ip",
                           help="print instruction pointer at time of syscall",
                           action="store_true", default=False)
+        parser.add_option("--event-handler", help="file with event handler",type="str")
 
         self.createLogOptions(parser)
 
         self.options, self.program = parser.parse_args()
+
+        if self.options.event_handler != None:
+            mod = import_from_path("ehandler", self.options.event_handler)
+            cname = os.path.splitext(os.path.basename(self.options.event_handler))[0]
+            eh = instantiate_class(mod, cname)
+            self.event_handler = eh
+        else:
+            self.event_handler = None
+
 
         if self.options.list_syscalls:
             syscalls = list(SYSCALL_NAMES.items())
@@ -143,6 +166,12 @@ class SyscallTracer(Application):
         return False
 
     def displaySyscall(self, syscall):
+        if self.event_handler != None:
+            if syscall.result is not None:
+                self.event_handler.syscall_exit(syscall)
+            else:
+                self.event_handler.syscall_enter(syscall)
+            return
         text = syscall.format()
         if syscall.result is not None:
             text = "%-40s = %s" % (text, syscall.result_text)
@@ -215,13 +244,23 @@ class SyscallTracer(Application):
     def newProcess(self, event):
         process = event.process
         error("*** New process %s ***" % process.pid)
+        if self.event_handler != None:
+            self.event_handler.process_new(process)
         self.prepareProcess(process)
         process.parent.syscall()
 
     def processExecution(self, event):
         process = event.process
         error("*** Process %s execution ***" % process.pid)
+        if self.event_handler != None:
+            self.event_handler.process_exec(process)
         process.syscall()
+
+    def createProcess(self):
+        p = Application.createProcess(self)
+        if self.event_handler != None:
+            self.event_handler.process_new(p)
+        return p
 
     def runDebugger(self):
         # Create debugger and traced process

@@ -1,24 +1,12 @@
-=============
-python-ptrace
-=============
+This is a fork of `python-ptrace`. See the <https://github.com/vstinner/python-ptrace> for the original README.
 
-.. image:: https://img.shields.io/pypi/v/python-ptrace.svg
-   :alt: Latest release on the Python Cheeseshop (PyPI)
-   :target: https://pypi.python.org/pypi/python-ptrace
+This fork extends `strace.py` to support easier handling of events.
+Use `--event-handler` to specify a Python script that handles strace events.
+This allows for easy filtering of syscalls and reacting to interesting syscalls.
+See the `eh_examples` folder for the following examples:
 
-.. image:: https://github.com/vstinner/python-ptrace/actions/workflows/build.yml/badge.svg
-   :alt: Build status of python-ptrace on GitHub Actions
-   :target: https://github.com/vstinner/python-ptrace/actions
+* `event_count`: Count specific syscalls from certain processes and delay the syscall execution.
+* `call_gdb`: Catch a specific syscall from a specific process, detach from the process and attach using gdb.
 
-python-ptrace is a debugger using ptrace (Linux, BSD and Darwin system call to
-trace processes) written in Python.
-
-* `python-ptrace documentation
-  <http://python-ptrace.readthedocs.io/>`_
-* `python-ptrace at GitHub
-  <https://github.com/vstinner/python-ptrace>`_
-* `python-ptrace at the Python Cheeseshop (PyPI)
-  <https://pypi.python.org/pypi/python-ptrace>`_
-
-python-ptrace is an opensource project written in Python under GNU GPL-2.0-only
-license. It supports Python 3.6 and newer.
+Some functionality is only available, if `strace.py` is called with specific arguments, e.g. `--show-ip` for instruction pointer access.
+See the `strace.py` code for the standard functionality to figure out how to access or print certain information.
