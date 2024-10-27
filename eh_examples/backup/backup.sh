@@ -1,0 +1,1 @@
+python3 strace.py -f --show-pid --show-ip --trace-exec --enter --event-handler=eh_examples/backup/ehandler.py -- bash -c "if [ -e test ]; then exit; fi; mkdir test; echo ver1 > test/a; rm test/a; echo ver2 > test/a; rm test/a; rmdir test"
