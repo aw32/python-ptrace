@@ -569,6 +569,9 @@ class PtraceProcess(object):
                 mem = self.read_mem_file
                 mem.seek(address)
                 data = mem.read(size)
+            except OSError as err:
+                if err.errno == 5:
+                    data = [] # fallback to other _readBytes
             except (IOError, ValueError) as err:
                 raise ProcessError(self, "readBytes(%s, %s) error: %s" % (
                     formatAddress(address), size, err))
