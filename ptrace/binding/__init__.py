@@ -8,6 +8,7 @@ from ptrace.binding.func import (   # noqa
     ptrace_setregs,
     ptrace_peektext, ptrace_poketext,
     ptrace_peekuser,
+    process_vm_readv,
     ptrace_registers_t)
 if HAS_PTRACE_EVENTS:
     from ptrace.binding.func import (WPTRACEEVENT,   # noqa

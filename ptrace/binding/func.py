@@ -322,3 +322,40 @@ else:
 if HAS_PTRACE_IO:
     def ptrace_io(pid, io_desc):
         ptrace(PTRACE_IO, pid, addressof(io_desc))
+
+
+from ptrace.ctypes_libc import libc
+if not hasattr(libc, "process_vm_readv"):
+    def process_vm_readv(pid, address, size):
+        raise Exception("process_vm_readv unavailable")
+else:
+    from  ptrace.linux_proc import PAGE_SIZE
+    from ctypes import create_string_buffer, addressof, get_errno, set_errno, byref
+    from math import floor
+    def process_vm_readv(pid, address, size):
+        end_address = address + size
+        # local iov
+        buffer = create_string_buffer(size)
+        local_iov = iovec_struct(addressof(buffer), size)
+        # remote iov
+        remote_iov_len = floor((address+size-1) / PAGE_SIZE) -  floor(address / PAGE_SIZE) + 1
+        remote_iov_type = iovec_struct * remote_iov_len
+        remote_iov = remote_iov_type()
+        # iterate over pages and fill remote_iov
+        first_offset = address % PAGE_SIZE
+        start = address
+        stop  = min(start - first_offset + PAGE_SIZE, end_address)
+        remote_iov[0] = iovec_struct(start, stop-start)
+        restsize = size - (stop-start)
+        for i in range(1, remote_iov_len):
+            start = stop
+            stop  = stop + min(PAGE_SIZE, restsize)
+            remote_iov[i] = iovec_struct(start, stop-start)
+            restsize  = restsize - (stop-start)
+        # call process_vm_readv
+        set_errno(0)
+        data_size = libc.process_vm_readv(pid, byref(local_iov), 1, byref(remote_iov), remote_iov_len, 0)
+        e = get_errno()
+        if data_size == -1:
+            raise OSError(e)
+        return bytes(buffer)

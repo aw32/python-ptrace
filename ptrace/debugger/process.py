@@ -54,6 +54,7 @@ if HAS_DISASSEMBLER:
     from ptrace.disasm import disassemble, disassembleOne, MAX_INSTR_SIZE
 if HAS_PROC:
     from ptrace.linux_proc import readProcessStat
+from ptrace.binding import process_vm_readv
 
 MIN_CODE_SIZE = 32
 MAX_CODE_SIZE = 1024
@@ -535,6 +536,15 @@ class PtraceProcess(object):
             address += CPU_WORD_SIZE
         return data
 
+    def _readBytes_process_vm_readv(self, address, size):
+        try:
+            data = process_vm_readv(self.pid, address, size)
+        except Exception as err:
+            # fallback to ptrace variant
+            self.readBytes = self._readBytes
+            return self.readBytes(address, size)
+        return data
+
     def readWord(self, address):
         """Address have to be aligned!"""
         word = ptrace_peektext(self.pid, address)
@@ -583,7 +593,7 @@ class PtraceProcess(object):
                 #
                 # Fallback to PTRACE_PEEKTEXT. It is slower but a debugger
                 # tracing the process is always allowed to use it.
-                self.readBytes = self._readBytes
+                self.readBytes = self._readBytes_process_vm_readv
                 return self.readBytes(address, size)
             return data
     else:
